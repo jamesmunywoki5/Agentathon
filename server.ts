@@ -19,10 +19,7 @@ const firebaseConfig = JSON.parse(fs.readFileSync("./firebase-applet-config.json
 const appFirebase = initializeApp(firebaseConfig);
 const db = getFirestore(appFirebase, firebaseConfig.firestoreDatabaseId);
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-  httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
-});
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
 async function startServer() {
   const app = express();
@@ -48,23 +45,49 @@ async function startServer() {
     bb.on("finish", async () => {
       try {
         const fullBuffer = Buffer.concat(pdfBuffer);
-        const data = await parsePdf(fullBuffer);
         
-        // Chunking the text (simple page-based or size-based)
-        // For demonstration, we'll store large chunks
-        const text = data.text;
-        const chunks = text.match(/[\s\S]{1,5000}/g) || [];
+        // Extracting text page-by-page for more accurate metadata
+        const pages: { text: string; pageNumber: number }[] = [];
+        
+        const options = {
+          pagerender: (pageData: any) => {
+            return pageData.getTextContent().then((textContent: any) => {
+              let lastY, text = '';
+              for (let item of textContent.items) {
+                if (lastY != item.transform[5] || !lastY) {
+                  text += '\n';
+                }
+                text += item.str;
+                lastY = item.transform[5];
+              }
+              pages.push({
+                text: text,
+                pageNumber: pageData.pageIndex + 1
+              });
+              return text;
+            });
+          }
+        };
 
-        for (let i = 0; i < chunks.length; i++) {
-          await addDoc(collection(db, "budgets"), {
-            text: chunks[i],
-            pageNumber: i + 1,
-            ward: ward || "General",
-            createdAt: serverTimestamp(),
-          });
+        await parsePdf(fullBuffer, options);
+        
+        let totalChunks = 0;
+        // Process each page and chunk if necessary
+        for (const page of pages) {
+          // Chunk pages larger than 4000 chars to keep context manageable
+          const chunks = page.text.match(/[\s\S]{1,4000}/g) || [];
+          for (const chunkText of chunks) {
+            await addDoc(collection(db, "budgets"), {
+              text: chunkText,
+              pageNumber: page.pageNumber,
+              ward: ward || "General",
+              createdAt: serverTimestamp(),
+            });
+            totalChunks++;
+          }
         }
 
-        res.json({ message: `Successfully processed ${chunks.length} chunks of budget data.` });
+        res.json({ message: `Successfully processed ${pages.length} pages into ${totalChunks} chunks.` });
       } catch (error) {
         console.error("PDF Processing Error:", error);
         res.status(500).json({ error: "Failed to process PDF." });
@@ -88,11 +111,11 @@ async function startServer() {
       }
       
       const snapshot = await getDocs(q);
-      const context = snapshot.docs.map(doc => doc.data().text).join("\n\n").substring(0, 15000); // Limit context size
+      const context = snapshot.docs.map(doc => doc.data().text).join("\n\n").substring(0, 20000); // Increased context limit
 
       // 2. Generate response using Gemini
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+      const result = await ai.models.generateContent({
+        model: "gemini-1.5-flash",
         config: {
           systemInstruction: `You are a Ward Budget Liaison for a Kenyan county. 
           Your goal is to explain complex budget data to residents in plain, everyday language. 
@@ -107,7 +130,7 @@ async function startServer() {
         ]
       });
 
-      res.json({ answer: response.text });
+      res.json({ answer: result.candidates?.[0]?.content?.parts?.[0]?.text || "No response generated." });
     } catch (error) {
       console.error("AI Chat Error:", error);
       res.status(500).json({ error: "Agent is having trouble analyzing the budget right now." });
