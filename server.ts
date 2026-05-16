@@ -2,9 +2,9 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
-import * as pdf from "pdf-parse";
-// @ts-ignore
-const parsePdf = pdf.default || pdf;
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const parsePdf = require("pdf-parse");
 import busboy from "busboy";
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp } from "firebase/firestore";
