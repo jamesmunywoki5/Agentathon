@@ -1,0 +1,53 @@
+{
+  "entities": {
+    "BudgetChunk": {
+      "title": "Budget Chunk",
+      "description": "A part of the county budget PDF processed for retrieval.",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "pageNumber": { "type": "number" },
+        "ward": { "type": "string" },
+        "metadata": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["text", "pageNumber", "createdAt"]
+    },
+    "WardSummary": {
+      "title": "Ward Summary",
+      "description": "Plain-language summary of budget allocations for a specific ward.",
+      "type": "object",
+      "properties": {
+        "ward": { "type": "string" },
+        "summary": { "type": "string" },
+        "lastUpdated": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ward", "summary", "lastUpdated"]
+    },
+    "Subscriber": {
+      "title": "Subscriber",
+      "description": "Resident opted-in for SMS budget digests.",
+      "type": "object",
+      "properties": {
+        "phoneNumber": { "type": "string" },
+        "ward": { "type": "string" },
+        "subscribedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["phoneNumber", "ward", "subscribedAt"]
+    }
+  },
+  "firestore": {
+    "budgets": {
+      "schema": "BudgetChunk",
+      "description": "Stored budget document segments."
+    },
+    "wardSummaries": {
+      "schema": "WardSummary",
+      "description": "AI-generated summaries for wards."
+    },
+    "subscribers": {
+      "schema": "Subscriber",
+      "description": "Resident SMS subscription list."
+    }
+  }
+}

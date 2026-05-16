@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() { return isSignedIn() && request.auth.token.email_verified == true && request.auth.token.email == 'jamesnzolya@gmail.com'; }
+
+    match /budgets/{chunkId} {
+      allow read: if true; // Publicly readable for budget transparency
+      allow write: if isAdmin();
+    }
+
+    match /wardSummaries/{summaryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /subscribers/{subscriberId} {
+      allow create: if true; // Residents can subscribe
+      allow read, update, delete: if isAdmin();
+    }
+  }
+}

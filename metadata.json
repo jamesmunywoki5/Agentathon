@@ -1,0 +1,8 @@
+{
+  "name": "Ward Budget Resident Agent",
+  "description": "An AI-powered agent that translates 400-page county budget PDFs into plain-language answers for ward residents, monitors gazette notices for amendments, and generates SMS budget digests.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
